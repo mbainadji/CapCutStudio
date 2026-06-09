@@ -1,11 +1,12 @@
-// src/screens/auth/RegisterScreen.tsx
 import React, { useState } from 'react';
-import { StyleSheet, View, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { TextInput, Button, Text, Surface } from 'react-native-paper';
 import { supabase } from '../../services/supabase';
 import { useTheme } from '../../context/ThemeContext';
+import { AuthScreenProps } from '../../types/navigation'; // 👈 Import de notre type strict
 
-export default function RegisterScreen({ navigation }: any) {
+// 👈 Remplacement de :any par notre type généré
+export default function RegisterScreen({ navigation }: AuthScreenProps<'Register'>) {
   const { colors } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,17 +23,22 @@ export default function RegisterScreen({ navigation }: any) {
     setIsLoading(true);
     setMsg('');
     
-    // Création du compte sur votre base PostgreSQL Supabase
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password });
     
     if (error) {
       setMsg(error.message);
       setIsError(true);
+      setIsLoading(false); // 👈 On arrête le chargement uniquement s'il y a une erreur
+    } else if (data.session) {
+      // Si Supabase connecte automatiquement l'utilisateur sans confirmation d'email,
+      // la session est créée immédiatement. On laisse le RootNavigator démonter l'écran sans toucher aux états locaux.
+      return;
     } else {
-      setMsg('Inscription réussie ! Vous pouvez maintenant vous connecter.');
+      // Cas où la confirmation par e-mail est obligatoire
+      setMsg('Inscription réussie ! Vérifiez votre boîte e-mail pour valider votre compte.');
       setIsError(false);
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (
@@ -44,7 +50,6 @@ export default function RegisterScreen({ navigation }: any) {
             Rejoignez le studio de montage CapCutStudio.
           </Text>
 
-          {/* Message d'état dynamique (Erreur ou Succès) */}
           {!!msg && (
             <Text style={[s.msg, { 
               color: isError ? colors.danger : colors.primary, 
@@ -94,7 +99,13 @@ export default function RegisterScreen({ navigation }: any) {
             S'inscrire
           </Button>
 
-          <Button mode="text" onPress={() => navigation.navigate('Login')} textColor={colors.primary} style={s.link}>
+          <Button 
+            mode="text" 
+            // 👈 Auto-complétion et validation stricte de la route par TypeScript
+            onPress={() => navigation.navigate('Login')} 
+            textColor={colors.primary} 
+            style={s.link}
+          >
             Déjà inscrit ? Se connecter
           </Button>
         </Surface>

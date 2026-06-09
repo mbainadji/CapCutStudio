@@ -1,11 +1,12 @@
-// src/screens/auth/LoginScreen.tsx
 import React, { useState } from 'react';
-import { StyleSheet, View, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { StyleSheet, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { TextInput, Button, Text, Surface } from 'react-native-paper';
 import { supabase } from '../../services/supabase';
 import { useTheme } from '../../context/ThemeContext';
+import { AuthScreenProps } from '../../types/navigation'; // 👈 Import de notre type strict
 
-export default function LoginScreen({ navigation }: any) {
+// 👈 Remplacement de :any par notre type généré à l'étape 1
+export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
   const { colors } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,13 +22,14 @@ export default function LoginScreen({ navigation }: any) {
     setIsLoading(true);
     setError('');
     
-    // Tentative de connexion sur votre projet Supabase
     const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
     
     if (authError) {
       setError(authError.message);
-      setIsLoading(false);
+      setIsLoading(false); // 👈 On l'exécute UNIQUEMENT en cas d'erreur
     }
+    // Pas de setIsLoading(false) ici en cas de succès ! 
+    // Le RootNavigator prend le relais et détruit cet écran proprement.
   };
 
   return (
@@ -39,7 +41,6 @@ export default function LoginScreen({ navigation }: any) {
             Connectez-vous à votre studio de montage intelligent.
           </Text>
 
-          {/* Affichage dynamique de l'erreur en bicolore */}
           {!!error && <Text style={[s.error, { color: colors.danger, borderColor: colors.danger }]}>⚠️ {error}</Text>}
 
           <TextInput
@@ -91,6 +92,7 @@ export default function LoginScreen({ navigation }: any) {
 
           <Button 
             mode="text" 
+            // 👈 Désormais, TypeScript valide et auto-complète la route 'Register'
             onPress={() => navigation.navigate('Register')} 
             textColor={colors.primary} 
             style={s.link}
