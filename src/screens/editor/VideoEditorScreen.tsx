@@ -6,6 +6,8 @@ import { supabase } from '../../services/supabase';
 import { generateAISubtitles } from '../../services/aiService';
 import { useTheme } from '../../context/ThemeContext';
 import { HomeScreenProps } from '../../types/navigation';
+import TimelineView from '../../types/TimelineView';
+import { ProjectTimeline, TimelineClip } from '../../types/timeline';
 
 export default function VideoEditorScreen({ route, navigation }: HomeScreenProps<'VideoEditor'>) {
   const { colors } = useTheme();
@@ -19,6 +21,21 @@ export default function VideoEditorScreen({ route, navigation }: HomeScreenProps
   const [videoUri, setVideoUri] = useState<string>('');
   const [subtitles, setSubtitles] = useState<string>('');
   
+  // 🛠️ MOCK DATA: Timeline initiale
+  const [timeline, setTimeline] = useState<ProjectTimeline>({
+    tracks: [
+      { id: 't1', type: 'video', clips: [
+        { id: 'c1', name: 'Intro Video', startTime: 0, duration: 5, sourceIn: 0, sourceOut: 5, sourceUri: '' }
+      ]},
+      { id: 't2', type: 'text', clips: [
+        { id: 'c2', name: 'Titre', startTime: 1, duration: 3, sourceIn: 0, sourceOut: 3, sourceUri: '' }
+      ]},
+      { id: 't3', type: 'audio', clips: [
+        { id: 'c3', name: 'Musique Fond', startTime: 0, duration: 10, sourceIn: 0, sourceOut: 10, sourceUri: '' }
+      ]}
+    ]
+  });
+
   const [loading, setLoading] = useState<boolean>(false);
   const [processingIA, setProcessingIA] = useState<boolean>(false);
 
@@ -171,6 +188,10 @@ export default function VideoEditorScreen({ route, navigation }: HomeScreenProps
             </View>
           )}
         </Surface>
+
+        {/* TIMELINE SECTION */}
+        <Text variant="titleMedium" style={[s.sectionTitle, { color: colors.text }]}>Timeline Multipiste</Text>
+        <TimelineView timeline={timeline} onClipPress={(clip: TimelineClip) => Alert.alert('Clip', clip.name)} />
 
         {/* PROCESSING CONTROL ELEMENTS */}
         <Text variant="titleMedium" style={[s.sectionTitle, { color: colors.text }]}>Actions Intelligentes</Text>

@@ -4,13 +4,15 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { IconButton } from 'react-native-paper';
 import { useTheme } from '../context/ThemeContext';
+import { HomeStackParamList, MainTabParamList } from '../types/navigation';
 
 import DashboardProjectsScreen from '../screens/project/DashboardProjectsScreen'; 
+import StudioScreen from '../screens/project/StudioScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import VideoEditorScreen from '../screens/editor/VideoEditorScreen'; // 👈 Assurez-vous d'importer l'éditeur
 
-const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator<HomeStackParamList>();
+const Tab = createBottomTabNavigator<MainTabParamList>();
 
 // 1. Vos Onglets de navigation
 function TabNavigator() {
@@ -18,12 +20,17 @@ function TabNavigator() {
   return (
     <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: { backgroundColor: colors.background, height: 60 } }}>
       <Tab.Screen 
-        name="DashboardTab" 
-        component={DashboardProjectsScreen} 
-        options={{ tabBarLabel: 'Studio', tabBarIcon: ({ color }) => <IconButton icon="video-film" iconColor={color} size={22} /> }} 
+        name="Studio" 
+        component={StudioScreen} 
+        options={{ tabBarLabel: 'Studio', tabBarIcon: ({ color }) => <IconButton icon="auto-fix" iconColor={color} size={22} /> }} 
       />
       <Tab.Screen 
-        name="ProfileTab" 
+        name="DashboardProjects" 
+        component={DashboardProjectsScreen} 
+        options={{ tabBarLabel: 'Stockage', tabBarIcon: ({ color }) => <IconButton icon="folder-video" iconColor={color} size={22} /> }} 
+      />
+      <Tab.Screen 
+        name="Profile" 
         component={ProfileScreen} 
         options={{ tabBarLabel: 'Profil', tabBarIcon: ({ color }) => <IconButton icon="account" iconColor={color} size={22} /> }} 
       />

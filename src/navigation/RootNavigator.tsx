@@ -1,10 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { supabase } from '../services/supabase';
 import { useTheme } from '../context/ThemeContext';
 import AuthNavigator from './AuthNavigator';
 import HomeNavigator from './HomeNavigator';
+
+// Configuration du Deep Linking
+const linking: LinkingOptions<any> = {
+  prefixes: ['capcutstudio://', 'https://capcutstudio.com'],
+  config: {
+    screens: {
+      // On cible l'écran VideoEditor qui est à la racine du Stack dans HomeNavigator
+      VideoEditor: 'project/:projectId',
+    },
+  },
+};
 
 export default function RootNavigator() {
   const { colors } = useTheme();
@@ -38,7 +49,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       {/* Si la session existe (locale ou cloud), on ouvre le Studio, sinon le Login */}
       {session ? <HomeNavigator /> : <AuthNavigator />}
     </NavigationContainer>

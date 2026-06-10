@@ -1,16 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, FlatList, SafeAreaView, ActivityIndicator, Alert } from 'react-native';
-import { Button, Card, Text, FAB, IconButton, Searchbar } from 'react-native-paper';
+import { Button, Card, Text, FAB, IconButton, Searchbar, Portal, Dialog, TextInput } from 'react-native-paper';
 import { supabase } from '../../services/supabase';
 import { useTheme } from '../../context/ThemeContext';
-import { HomeScreenProps } from '../../types/navigation';
+import { HomeTabScreenProps } from '../../types/navigation';
 
-export default function DashboardProjectsScreen({ navigation }: HomeScreenProps<'DashboardProjects'>) {
+export default function DashboardProjectsScreen({ navigation }: HomeTabScreenProps<'DashboardProjects'>) {
   const { colors } = useTheme();
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [isDialogVisible, setIsDialogVisible] = useState(false);
+  const [newProjectTitle, setNewProjectTitle] = useState('');
 
   // 1. Récupération des projets depuis Supabase
   const fetchProjects = async () => {
@@ -41,6 +43,42 @@ export default function DashboardProjectsScreen({ navigation }: HomeScreenProps<
     });
     return unsubscribe;
   }, [navigation]);
+
+  // 1b. Action de création intentionnelle d'un projet
+  const handleCreateProject = async () => {
+    if (!newProjectTitle.trim()) {
+      Alert.alert('Erreur', 'Veuillez donner un nom à votre projet.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Utilisateur non connecté");
+
+      const { data, error } = await supabase
+        .from('projects')
+        .insert([
+          { 
+            title: newProjectTitle, 
+            user_id: user.id,
+            updated_at: new Date().toISOString() 
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setIsDialogVisible(false);
+      setNewProjectTitle('');
+      navigation.navigate('VideoEditor', { projectId: data.id });
+    } catch (err: any) {
+      Alert.alert('Erreur', err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // 2. Action de sauvegarde / Upload du fichier vidéo vers Supabase Storage
   const uploadVideoToStorage = async (projectId: string, localUri: string) => {
@@ -105,7 +143,7 @@ export default function DashboardProjectsScreen({ navigation }: HomeScreenProps<
         
         <View style={s.header}>
           <Text variant="headlineSmall" style={[s.title, { color: colors.primary }]}>
-            Studio
+            Stockage
           </Text>
           <Button mode="text" compact onPress={() => supabase.auth.signOut()} textColor={colors.danger}>
             Déconnexion
@@ -188,13 +226,40 @@ export default function DashboardProjectsScreen({ navigation }: HomeScreenProps<
           />
         )}
 
-        {/* 🛠️ FIX ZENCODER : Suppression de 'isNew: true' pour respecter la signature de type de l'objet attendu */}
+        <Portal>
+          <Dialog visible={isDialogVisible} onDismiss={() => setIsDialogVisible(false)} style={{ backgroundColor: colors.background }}>
+            <Dialog.Title style={{ color: colors.primary }}>Nouveau Projet</Dialog.Title>
+            <Dialog.Content>
+              <TextInput
+                label="Nom du projet"
+                value={newProjectTitle}
+                onChangeText={setNewProjectTitle}
+                mode="outlined"
+                autoFocus
+                activeOutlineColor={colors.primary}
+                outlineColor={colors.border}
+                style={{ backgroundColor: colors.background }}
+              />
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button onPress={() => setIsDialogVisible(false)} textColor={colors.textSecondary}>Annuler</Button>
+              <Button 
+                onPress={handleCreateProject} 
+                loading={loading} 
+                disabled={!newProjectTitle.trim() || loading}
+              >
+                Créer
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
+
         <FAB
           icon="plus"
           label="Nouveau"
           style={[s.fab, { backgroundColor: colors.primary }]}
           color={colors.white}
-          onPress={() => navigation.navigate('VideoEditor', {})}
+          onPress={() => setIsDialogVisible(true)}
         />
       </View>
     </SafeAreaView>

@@ -1,8 +1,7 @@
 import React from 'react';
 import { StatusBar, SafeAreaView, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
 import { ThemeProvider } from './context/ThemeContext';
-import AuthNavigator from './navigation/AuthNavigator';
+import RootNavigator from './navigation/RootNavigator';
 
 export default function App() {
   return (
@@ -12,9 +11,7 @@ export default function App() {
         {/* Force les icônes de la barre d'état (heure, batterie) à être sombres sur fond blanc */}
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         
-        <NavigationContainer>
-          <AuthNavigator />
-        </NavigationContainer>
+        <RootNavigator />
       </SafeAreaView>
     </ThemeProvider>
   );

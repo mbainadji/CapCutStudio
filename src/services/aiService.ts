@@ -2,11 +2,11 @@ import axios from 'axios';
 
 // 🔒 RECOMMANDATION PRODUCTION : Remplacer par des variables d'environnement (ex: process.env.GROQ_API_KEY)
 // Clé d'API Groq stockée temporairement en dur (Attention : risque de blocage GitHub)
-const GROQ_API_KEY = 'project_01ktf81854f4ptrmgpt5681nej'; 
+const GROQ_API_KEY = 'gsk_VOTRE_CLE_REELLE'; // ⚠️ 'project_...' n'est pas une clé valide
 
-// Récupération de la clé Replicate sécurisée via les variables d'environnement du système
-const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
-
+// ⚠️ CORRECTIF : process.env n'existe pas nativement dans React Native.
+// Son accès direct provoque un crash immédiat (ReferenceError).
+const REPLICATE_API_TOKEN = ''; 
 
 // Interface TypeScript pour définir la structure d'un fichier multimédia dans React Native
 interface ReactNativeBlob {
@@ -39,7 +39,7 @@ export const generateAISubtitles = async (videoUri: string): Promise<string> => 
 
     // ✅ Envoi de la requête POST vers l'URL officielle pour soumettre le fichier
     const response = await axios.post(
-      'https://groq.com',
+      'https://api.groq.com/openai/v1/audio/transcriptions',
       formData,
       {
         headers: {
@@ -67,7 +67,7 @@ export const applyAIVideoBackgroundRemoval = async (videoUrl: string): Promise<s
   try {
     // ✅ ÉTAPE 1 : Initialisation - Envoi de la demande de détourage à Replicate
     const startPrediction = await axios.post(
-      'https://replicate.com',
+      'https://api.replicate.com/v1/predictions',
       {
         // Identifiant de version unique du modèle Robust Video Matting
         version: "a9a21e923bb11d023806e5457e618a594892c140", 
@@ -95,7 +95,7 @@ export const applyAIVideoBackgroundRemoval = async (videoUrl: string): Promise<s
       
       // ✅ ÉTAPE 3 : Demande de mise à jour du statut en utilisant l'identifiant de la tâche
       const checkPrediction = await axios.get(
-        `https://replicate.com/${predictionId}`,
+        `https://api.replicate.com/v1/predictions/${predictionId}`,
         { 
           headers: { 
             'Authorization': `Token ${REPLICATE_API_TOKEN}` 

@@ -22,14 +22,19 @@ export default function LoginScreen({ navigation }: AuthScreenProps<'Login'>) {
     setIsLoading(true);
     setError('');
     
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
-    
-    if (authError) {
-      setError(authError.message);
-      setIsLoading(false); // 👈 On l'exécute UNIQUEMENT en cas d'erreur
+    try {
+      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (authError) {
+        setError(authError.message);
+        setIsLoading(false);
+      }
+      // En cas de succès, on laisse setIsLoading(true) car l'écran va être démonté 
+      // par le RootNavigator. Si ça ne change pas, vérifiez vos identifiants Supabase.
+    } catch (err: any) {
+      setError("Impossible de contacter le serveur. Vérifiez votre connexion.");
+      setIsLoading(false);
     }
-    // Pas de setIsLoading(false) ici en cas de succès ! 
-    // Le RootNavigator prend le relais et détruit cet écran proprement.
   };
 
   return (

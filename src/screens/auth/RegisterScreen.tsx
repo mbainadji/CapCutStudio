@@ -23,20 +23,23 @@ export default function RegisterScreen({ navigation }: AuthScreenProps<'Register
     setIsLoading(true);
     setMsg('');
     
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    
-    if (error) {
-      setMsg(error.message);
+    try {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      
+      if (error) {
+        setMsg(error.message);
+        setIsError(true);
+        setIsLoading(false);
+      } else if (data.session) {
+        return;
+      } else {
+        setMsg('Inscription réussie ! Vérifiez votre boîte e-mail.');
+        setIsError(false);
+        setIsLoading(false);
+      }
+    } catch (err) {
+      setMsg("Une erreur imprévue est survenue.");
       setIsError(true);
-      setIsLoading(false); // 👈 On arrête le chargement uniquement s'il y a une erreur
-    } else if (data.session) {
-      // Si Supabase connecte automatiquement l'utilisateur sans confirmation d'email,
-      // la session est créée immédiatement. On laisse le RootNavigator démonter l'écran sans toucher aux états locaux.
-      return;
-    } else {
-      // Cas où la confirmation par e-mail est obligatoire
-      setMsg('Inscription réussie ! Vérifiez votre boîte e-mail pour valider votre compte.');
-      setIsError(false);
       setIsLoading(false);
     }
   };

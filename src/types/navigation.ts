@@ -1,4 +1,6 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { CompositeScreenProps } from '@react-navigation/native';
 
 // 1. Liste des écrans et leurs paramètres pour le flux d'authentification
 export type AuthStackParamList = {
@@ -6,16 +8,28 @@ export type AuthStackParamList = {
   Register: undefined;
 };
 
-// 2. Liste des écrans et leurs paramètres pour le flux principal
-export type HomeStackParamList = {
+// 2. Liste des écrans pour les Onglets (Tabs)
+export type MainTabParamList = {
+  Studio: undefined;
   DashboardProjects: undefined;
-  VideoEditor: { projectId?: string }; // Permet de passer optionnellement un ID de projet
   Profile: undefined;
 };
 
-// 3. Types d'aide pour typer le hook 'useNavigation' dans tes composants
+// 3. Liste des écrans pour le Stack principal (inclut les Tabs)
+export type HomeStackParamList = {
+  Tabs: undefined; // Contient le TabNavigator
+  VideoEditor: { projectId?: string; effectType?: string }; 
+};
+
+// 4. Types d'aide pour les écrans
 export type AuthScreenProps<T extends keyof AuthStackParamList> = 
   NativeStackScreenProps<AuthStackParamList, T>;
 
 export type HomeScreenProps<T extends keyof HomeStackParamList> = 
   NativeStackScreenProps<HomeStackParamList, T>;
+
+export type HomeTabScreenProps<T extends keyof MainTabParamList> = 
+  CompositeScreenProps<
+    BottomTabScreenProps<MainTabParamList, T>,
+    NativeStackScreenProps<HomeStackParamList>
+  >;
