@@ -3,6 +3,7 @@ import { StyleSheet, View, ScrollView, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useTheme } from '../context/ThemeContext';
 import { ProjectTimeline, TimelineClip, TrackType, TimelineTrack } from './timeline';
+import { useTimelineStore, TimelineState } from '../screens/editor/useTimelineStore';
 
 const PIXELS_PER_SECOND = 40; // Zoom factor
 const TRACK_HEIGHT = 50;
@@ -14,6 +15,7 @@ interface TimelineViewProps {
 
 export default function TimelineView({ timeline, onClipPress }: TimelineViewProps) {
   const { colors } = useTheme();
+  const currentTime = useTimelineStore((state: TimelineState) => state.currentTime);
 
   const getTrackColor = (type: TrackType) => {
     switch (type) {
@@ -57,8 +59,13 @@ export default function TimelineView({ timeline, onClipPress }: TimelineViewProp
             </View>
           ))}
           
-          {/* Playhead (Curseur de lecture) - Positionné ici pour l'exemple */}
-          <View style={[s.playhead, { backgroundColor: colors.danger }]} />
+          {/* Playhead (Curseur de lecture) - Dynamiquement lié au Store */}
+          <View 
+            style={[
+              s.playhead, 
+              { backgroundColor: colors.danger, left: currentTime * PIXELS_PER_SECOND }
+            ]} 
+          />
         </View>
       </ScrollView>
     </View>

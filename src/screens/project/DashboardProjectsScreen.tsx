@@ -126,10 +126,25 @@ export default function DashboardProjectsScreen({ navigation }: HomeTabScreenPro
     }
   };
 
-  const handleSoftDelete = (id: string) => {
-    setProjects(prev =>
-      prev.map(proj => proj.id === id ? { ...proj, is_deleted_local: true } : proj)
-    );
+  const handleSoftDelete = async (id: string) => {
+    try {
+      // Mise à jour optimiste UI
+      setProjects(prev =>
+        prev.map(proj => proj.id === id ? { ...proj, is_deleted_local: true } : proj)
+      );
+
+      // ✅ PERSISTENCE : Mise à jour réelle dans Supabase
+      const { error } = await supabase
+        .from('projects')
+        .update({ is_deleted: true }) // Assurez-vous d'avoir cette colonne ou utilisez .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Erreur suppression:', err);
+      Alert.alert('Erreur', 'Impossible de supprimer le projet sur le serveur.');
+      fetchProjects(); // Recharger pour synchroniser l'UI en cas d'échec
+    }
   };
 
   const filteredProjects = projects.filter(p => 

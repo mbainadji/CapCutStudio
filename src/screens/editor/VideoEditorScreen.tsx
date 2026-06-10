@@ -8,6 +8,8 @@ import { useTheme } from '../../context/ThemeContext';
 import { HomeScreenProps } from '../../types/navigation';
 import TimelineView from '../../types/TimelineView';
 import { ProjectTimeline, TimelineClip } from '../../types/timeline';
+import { VideoPreview } from './VideoPreview';
+import { useTimelineStore } from '../../store/useTimelineStore';
 
 export default function VideoEditorScreen({ route, navigation }: HomeScreenProps<'VideoEditor'>) {
   const { colors } = useTheme();
@@ -20,23 +22,12 @@ export default function VideoEditorScreen({ route, navigation }: HomeScreenProps
   const [projectTitle, setProjectTitle] = useState<string>('Studio - Projet de Montage');
   const [videoUri, setVideoUri] = useState<string>('');
   const [subtitles, setSubtitles] = useState<string>('');
-  
-  // 🛠️ MOCK DATA: Timeline initiale
-  const [timeline, setTimeline] = useState<ProjectTimeline>({
-    tracks: [
-      { id: 't1', type: 'video', clips: [
-        { id: 'c1', name: 'Intro Video', startTime: 0, duration: 5, sourceIn: 0, sourceOut: 5, sourceUri: '' }
-      ]},
-      { id: 't2', type: 'text', clips: [
-        { id: 'c2', name: 'Titre', startTime: 1, duration: 3, sourceIn: 0, sourceOut: 3, sourceUri: '' }
-      ]},
-      { id: 't3', type: 'audio', clips: [
-        { id: 'c3', name: 'Musique Fond', startTime: 0, duration: 10, sourceIn: 0, sourceOut: 10, sourceUri: '' }
-      ]}
-    ]
-  });
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
-  const [loading, setLoading] = useState<boolean>(false);
+  // ✅ Store Global
+  const { timeline, currentTime, duration, loadProjectTimeline, setCurrentTime } = useTimelineStore();
+  
+  const [isLoadingUI, setIsLoadingUI] = useState<boolean>(false);
   const [processingIA, setProcessingIA] = useState<boolean>(false);
 
   // 🛠️ FIX ZENCODER: Dynamically determine if this is a new workflow by checking if projectId parameter is null
@@ -46,7 +37,8 @@ export default function VideoEditorScreen({ route, navigation }: HomeScreenProps
     if (!isNewWorkflow && projectIdParam) {
       const loadProject = async () => {
         try {
-          setLoading(true);
+          setIsLoadingUI(true);
+          // Charger les métadonnées de base
           const { data, error } = await supabase
             .from('projects')
             .select('*')
@@ -57,11 +49,13 @@ export default function VideoEditorScreen({ route, navigation }: HomeScreenProps
             setProjectTitle(data.title || 'Projet de Montage');
             setVideoUri(data.video_uri || '');
             setSubtitles(data.settings?.subtitles || '');
+            // Charger la timeline structurelle
+            await loadProjectTimeline(projectIdParam);
           }
         } catch (err) {
           console.error('Erreur chargement projet:', err);
         } {
-          setLoading(false);
+          setIsLoadingUI(false);
         }
       };
       loadProject();
@@ -134,7 +128,7 @@ export default function VideoEditorScreen({ route, navigation }: HomeScreenProps
     }
   };
 
-  if (loading) {
+  if (isLoadingUI) {
     return (
       <View style={[s.center, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -163,25 +157,18 @@ export default function VideoEditorScreen({ route, navigation }: HomeScreenProps
 
       <ScrollView contentContainerStyle={s.scrollContainer}>
         {/* VIDEO MONITOR VIEW BOX */}
-        {/* 🛠️ FIX ZENCODER: Mode property adjusted from "outlined" to "flat" to comply with structural configurations schema definition profiles */}
         <Surface style={[s.videoMonitor, { backgroundColor: colors.card, borderColor: colors.border }]} mode="flat" elevation={0}>
           {videoUri ? (
-            <View style={s.monitorContent}>
-              <IconButton icon="video-check-outline" iconColor={colors.primary} size={48} />
-              <Text variant="titleMedium" style={{ color: colors.text, fontWeight: '700' }}>Vidéo chargée</Text>
-              <Text variant="bodySmall" numberOfLines={1} style={{ color: colors.textSecondary, marginTop: 4, width: '85%', textAlign: 'center' }}>
-                {videoUri}
-              </Text>
-              <Button mode="outlined" compact onPress={handleSelectVideo} style={{ marginTop: 12 }} textColor={colors.primary}>
-                Changer de fichier
-              </Button>
-            </View>
+            <VideoPreview 
+              videoUri={videoUri}
+              timeline={timeline}
+              currentTime={currentTime}
+              onTimeUpdate={setCurrentTime}
+              isPlaying={isPlaying}
+            />
           ) : (
             <View style={s.monitorContent}>
               <IconButton icon="video-plus-outline" iconColor={colors.textSecondary} size={48} />
-              <Text variant="bodyMedium" style={{ color: colors.textSecondary, marginBottom: 12 }}>
-                Aucune vidéo associée à ce projet.
-              </Text>
               <Button mode="contained" onPress={handleSelectVideo} buttonColor={colors.primary} textColor={colors.white}>
                 Importer une vidéo
               </Button>
@@ -189,9 +176,24 @@ export default function VideoEditorScreen({ route, navigation }: HomeScreenProps
           )}
         </Surface>
 
+        {/* PLAYBACK CONTROLS */}
+        <View style={s.controls}>
+          <IconButton 
+            icon={isPlaying ? "pause" : "play"} 
+            mode="contained"
+            containerColor={colors.primary}
+            iconColor={colors.white}
+            onPress={() => setIsPlaying(!isPlaying)} 
+          />
+          <Text style={{ color: colors.text }}>{currentTime.toFixed(2)}s / {duration.toFixed(2)}s</Text>
+        </View>
+
         {/* TIMELINE SECTION */}
         <Text variant="titleMedium" style={[s.sectionTitle, { color: colors.text }]}>Timeline Multipiste</Text>
-        <TimelineView timeline={timeline} onClipPress={(clip: TimelineClip) => Alert.alert('Clip', clip.name)} />
+        <TimelineView 
+          timeline={timeline} 
+          onClipPress={(clip: TimelineClip) => Alert.alert('Clip', clip.name)} 
+        />
 
         {/* PROCESSING CONTROL ELEMENTS */}
         <Text variant="titleMedium" style={[s.sectionTitle, { color: colors.text }]}>Actions Intelligentes</Text>
@@ -232,6 +234,7 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 4, paddingVertical: 4, borderBottomWidth: 1 },
   titleInput: { flex: 1, fontSize: 18, fontWeight: 'bold', height: 40 },
   scrollContainer: { padding: 20 },
+  controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   videoMonitor: { height: 220, borderRadius: 16, borderWidth: 1, justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
   monitorContent: { alignItems: 'center', width: '100%' },
   sectionTitle: { fontWeight: 'bold', marginBottom: 12 },
