@@ -16,26 +16,31 @@ export default function ProfileScreen({ navigation }: HomeTabScreenProps<'Profil
   const [projectCount, setProjectCount] = useState(0);
 
   useEffect(() => {
-    const loadUserData = async () => {
+    let isMounted = true;
+
+    const initProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setEmail(user.email || '');
+      if (user && isMounted) {
         const name = user.user_metadata?.full_name || 'Créateur CapCut';
+        setEmail(user.email || '');
         setDisplayName(name);
         setOriginalDisplayName(name);
         fetchProjectCount(user.id);
       }
     };
 
-    loadUserData();
+    initProfile();
 
     const unsubscribe = navigation.addListener('focus', () => {
       supabase.auth.getUser().then(({ data: { user } }) => {
-        if (user) fetchProjectCount(user.id);
+        if (user && isMounted) fetchProjectCount(user.id);
       });
     });
 
-    return unsubscribe;
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, [navigation]);
 
   const fetchProjectCount = async (userId: string) => {
