@@ -21,7 +21,7 @@ export interface StandardEffectConfig {
 }
 
 export interface AIEffectConfig {
-  type: 'subtitles' | 'remove_bg' | 'tts' | 'gen_video';
+  type: 'subtitles' | 'remove_bg' | 'tts' | 'gen_video' | 'gen_image'; // Ajout de 'gen_image'
   status: 'idle' | 'processing' | 'completed' | 'failed';
   resultUri?: string; // URI du fichier généré (mask, mp3, mp4)
   prompt?: string;    // Pour TTS et Générateur

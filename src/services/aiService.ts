@@ -1,12 +1,10 @@
 import axios from 'axios';
+import Config from 'react-native-config'; // Importez Config pour accéder aux variables d'environnement
 
-// 🔒 RECOMMANDATION PRODUCTION : Remplacer par des variables d'environnement (ex: process.env.GROQ_API_KEY)
-// Clé d'API Groq stockée temporairement en dur (Attention : risque de blocage GitHub)
-const GROQ_API_KEY = 'gsk_VOTRE_CLE_REELLE'; // ⚠️ 'project_...' n'est pas une clé valide
-
-// ⚠️ CORRECTIF : process.env n'existe pas nativement dans React Native.
-// Son accès direct provoque un crash immédiat (ReferenceError).
-const REPLICATE_API_TOKEN = ''; 
+// Récupération des clés API depuis les variables d'environnement
+// Assurez-vous que ces variables sont définies dans votre fichier .env
+const GROQ_API_KEY = Config.GROQ_API_KEY;
+const REPLICATE_API_TOKEN = Config.REPLICATE_API_TOKEN;
 
 // Interface TypeScript pour définir la structure d'un fichier multimédia dans React Native
 interface ReactNativeBlob {
@@ -119,5 +117,50 @@ export const applyAIVideoBackgroundRemoval = async (videoUrl: string): Promise<s
     console.error('Erreur Détourage IA:', error?.response?.data || error.message);
     // Renvoie la vidéo initiale non détourée pour que l'utilisateur ne reste pas bloqué
     return videoUrl; 
+  }
+};
+
+/**
+ * 🤖 IA TEXT-TO-IMAGE (REPLICATE - Stable Diffusion) : Génération d'images à partir de texte
+ * Cette fonction prend un prompt textuel et utilise un modèle Stable Diffusion sur Replicate
+ * pour générer une image.
+ * @param prompt Le texte décrivant l'image à générer.
+ * @returns L'URL de l'image générée.
+ */
+export const generateAIImage = async (prompt: string): Promise<string> => {
+  try {
+    // ✅ ÉTAPE 1 : Initialisation - Envoi de la demande de génération à Replicate
+    const startPrediction = await axios.post(
+      'https://api.replicate.com/v1/predictions',
+      {
+        // Modèle Stable Diffusion 1.5 (un choix populaire et performant)
+        version: "db21e45d3f7023abc2a46ee38a23973f6dce16bb082a930b8c49861f96d1e5bf", 
+        input: { prompt: prompt } // Le prompt textuel pour la génération
+      },
+      {
+        headers: {
+          'Authorization': `Token ${REPLICATE_API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const predictionId = startPrediction.data.id;
+    let status = startPrediction.data.status;
+    let outputUrl = '';
+
+    // ÉTAPE 2 : Boucle de vérification (Polling)
+    while (status !== 'succeeded' && status !== 'failed') {
+      await new Promise<void>((resolve) => setTimeout(resolve, 2000)); // Attendre 2 secondes
+      const checkPrediction = await axios.get(`https://api.replicate.com/v1/predictions/${predictionId}`, { headers: { 'Authorization': `Token ${REPLICATE_API_TOKEN}` } });
+      status = checkPrediction.data.status;
+      if (status === 'succeeded') {
+        outputUrl = checkPrediction.data.output[0]; // Stable Diffusion retourne un tableau d'URLs
+      }
+    }
+    return outputUrl;
+  } catch (error: any) {
+    console.error('Erreur Génération Image IA:', error?.response?.data || error.message);
+    return ''; // Retourne une chaîne vide en cas d'échec
   }
 };

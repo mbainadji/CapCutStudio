@@ -1,11 +1,11 @@
 // src/services/supabase.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import Config from 'react-native-config'; // Importez Config pour accéder aux variables d'environnement
 
 // Configuration officielle de votre base de données
 const SUPABASE_URL = 'https://ojtsrgkqqegmhitduwgx.supabase.co'; 
-// ⚠️ Remplacez la valeur ci-dessous par votre clé 'anon' 'public' récupérée sur Supabase (commence par eyJ...)
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qdHNyZ2txcWVnbWhpdGR1d2d4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NTg2OTcsImV4cCI6MjA5NjMzNDY5N30.qHseHo09M8_1hHPt7LSPfOiimMf5xzIwURhX0ZLhomM';
+const SUPABASE_ANON_KEY = Config.SUPABASE_ANON_KEY; // Récupération de la clé depuis .env
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
