@@ -1,4 +1,5 @@
 // src/services/supabase.ts
+import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
 import Config from 'react-native-config'; // Importez Config pour accéder aux variables d'environnement

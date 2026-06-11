@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform, Text } from 'react-native';
 import { VideoEffectRenderer, getInterpolatedValue } from '../../types/webglEffects';
 import { ProjectTimeline, TimelineClip } from '../../types/timeline';
 import { useTimelineStore, TimelineState } from './useTimelineStore';
@@ -29,6 +29,12 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
 
   // 1. Initialisation de la source vidéo (cachée)
   useEffect(() => {
+    // ⚠️ CORRECTIF ANDROID : 'document' est une API Web. 
+    // Sur Android natif, il faut utiliser une bibliothèque comme 'react-native-video'.
+    if (Platform.OS !== 'web') {
+      return;
+    }
+
     const video = document.createElement('video');
     video.src = videoUri;
     video.crossOrigin = "anonymous";
@@ -41,7 +47,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
       video.src = "";
       video.load();
       if (canvasRef.current) {
-        const gl = canvasRef.current.getContext('webgl');
+        const gl = canvasRef.current.getContext?.('webgl');
         if (gl && textureRef.current) gl.deleteTexture(textureRef.current);
       }
     };
@@ -133,10 +139,19 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     };
   }, [timeline]); // On relance si la structure des effets change
 
+  // Si on est sur Android/iOS, on affiche un message ou on utilise un composant natif (ex: GLView d'expo-gl)
+  if (Platform.OS !== 'web') {
+    return (
+      <View style={[s.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: '#fff' }}>Le rendu WebGL nécessite expo-gl sur Android</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={s.container}>
       {/* Le Canvas WebGL visible à l'utilisateur */}
-      <canvas ref={canvasRef} style={s.canvas} />
+      <canvas ref={canvasRef} style={s.canvas as any} />
     </View>
   );
 };

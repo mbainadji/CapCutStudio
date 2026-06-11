@@ -1,3 +1,4 @@
+import 'react-native-url-polyfill/auto';
 import React from 'react';
 import { StatusBar, SafeAreaView, StyleSheet } from 'react-native';
 import { ThemeProvider } from './context/ThemeContext';
