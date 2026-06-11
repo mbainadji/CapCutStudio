@@ -9,7 +9,7 @@ import { HomeScreenProps } from '../../types/navigation';
 import TimelineView from '../../types/TimelineView';
 import { ProjectTimeline, TimelineClip } from '../../types/timeline';
 import { VideoPreview } from './VideoPreview';
-import { useTimelineStore } from '../../store/useTimelineStore';
+import { useTimelineStore, TimelineState } from './useTimelineStore';
 
 export default function VideoEditorScreen({ route, navigation }: HomeScreenProps<'VideoEditor'>) {
   const { colors } = useTheme();
@@ -25,7 +25,9 @@ export default function VideoEditorScreen({ route, navigation }: HomeScreenProps
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
   // ✅ Store Global
-  const { timeline, currentTime, duration, loadProjectTimeline, setCurrentTime } = useTimelineStore();
+  const { timeline, currentTime, duration, loadProjectTimeline, setCurrentTime } = useTimelineStore(
+    (state: TimelineState) => state
+  );
   
   const [isLoadingUI, setIsLoadingUI] = useState<boolean>(false);
   const [processingIA, setProcessingIA] = useState<boolean>(false);
@@ -54,7 +56,7 @@ export default function VideoEditorScreen({ route, navigation }: HomeScreenProps
           }
         } catch (err) {
           console.error('Erreur chargement projet:', err);
-        } {
+        } finally {
           setIsLoadingUI(false);
         }
       };

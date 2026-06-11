@@ -9,24 +9,43 @@ export default function ProfileScreen({ navigation }: HomeTabScreenProps<'Profil
   const { colors } = useTheme();
   const [email, setEmail] = useState('Chargement...');
   const [displayName, setDisplayName] = useState('');
+  const [originalDisplayName, setOriginalDisplayName] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [projectCount, setProjectCount] = useState(0);
 
   useEffect(() => {
-    let isMounted = true;
-
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (isMounted && user) {
+    const loadUserData = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
         setEmail(user.email || '');
-        setDisplayName(user.user_metadata?.full_name || 'Créateur CapCut');
+        const name = user.user_metadata?.full_name || 'Créateur CapCut';
+        setDisplayName(name);
+        setOriginalDisplayName(name);
+        fetchProjectCount(user.id);
       }
+    };
+
+    loadUserData();
+
+    const unsubscribe = navigation.addListener('focus', () => {
+      supabase.auth.getUser().then(({ data: { user } }) => {
+        if (user) fetchProjectCount(user.id);
+      });
     });
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    return unsubscribe;
+  }, [navigation]);
+
+  const fetchProjectCount = async (userId: string) => {
+    const { count, error } = await supabase
+      .from('projects')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+    
+    if (!error && count !== null) setProjectCount(count);
+  };
 
   const handleUpdateProfile = async () => {
     try {
@@ -49,12 +68,19 @@ export default function ProfileScreen({ navigation }: HomeTabScreenProps<'Profil
 
       Alert.alert('Succès', 'Vos informations ont été mises à jour !');
       setIsEditing(false);
+      setOriginalDisplayName(displayName);
       setNewPassword('');
     } catch (error: any) {
       Alert.alert('Erreur', error.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancelEdit = () => {
+    setDisplayName(originalDisplayName);
+    setNewPassword('');
+    setIsEditing(false);
   };
 
   return (
@@ -66,7 +92,7 @@ export default function ProfileScreen({ navigation }: HomeTabScreenProps<'Profil
           <View style={s.avatarSection}>
             <Avatar.Text 
               size={80} 
-              label={displayName.substring(0, 2).toUpperCase()} 
+              label={displayName ? displayName.substring(0, 2).toUpperCase() : '??'} 
               style={{ backgroundColor: colors.primary }}
               labelStyle={{ color: colors.white }}
             />
@@ -95,7 +121,7 @@ export default function ProfileScreen({ navigation }: HomeTabScreenProps<'Profil
                   <Button mode="contained" onPress={handleUpdateProfile} loading={loading} style={s.saveBtn}>
                     Enregistrer
                   </Button>
-                  <Button mode="text" onPress={() => setIsEditing(false)}>
+                  <Button mode="text" onPress={handleCancelEdit}>
                     Annuler
                   </Button>
                 </View>
@@ -118,12 +144,12 @@ export default function ProfileScreen({ navigation }: HomeTabScreenProps<'Profil
           {/* 2. Tableau de bord des Statistiques */}
           <View style={s.statsContainer}>
             <Surface style={[s.statsCard, { backgroundColor: colors.card }]} elevation={0}>
-              <Text variant="titleLarge" style={[s.statsNumber, { color: colors.primary }]}>PostgreSQL</Text>
-              <Text variant="bodySmall" style={{ color: colors.textSecondary }}>Base synchronisée</Text>
+              <Text variant="titleLarge" style={[s.statsNumber, { color: colors.primary }]}>{projectCount}</Text>
+              <Text variant="bodySmall" style={{ color: colors.textSecondary }}>Projets créés</Text>
             </Surface>
             <Surface style={[s.statsCard, { backgroundColor: colors.card }]} elevation={0}>
-              <Text variant="titleLarge" style={[s.statsNumber, { color: colors.primary }]}>Groq & RVM</Text>
-              <Text variant="bodySmall" style={{ color: colors.textSecondary }}>Moteurs IA Actifs</Text>
+              <Text variant="titleLarge" style={[s.statsNumber, { color: colors.primary }]}>IA</Text>
+              <Text variant="bodySmall" style={{ color: colors.textSecondary }}>Services actifs</Text>
             </Surface>
           </View>
 

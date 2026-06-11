@@ -1,42 +1,47 @@
 import { create } from 'zustand';
-import { ProjectTimeline, TimelineTrack, TimelineClip } from '../types/timeline';
-import { supabase } from '../services/supabase';
+import { ProjectTimeline, TimelineTrack, TimelineClip } from '../../types/timeline';
+import { supabase } from '../../services/supabase';
 
 export interface TimelineState {
   timeline: ProjectTimeline;
   currentTime: number;
   duration: number;
   isLoading: boolean;
+  error: string | null; // ← Ajouté pour exposer les erreurs à l'UI
 
-  // Actions
   setCurrentTime: (time: number) => void;
   setTimeline: (timeline: ProjectTimeline) => void;
   loadProjectTimeline: (projectId: string) => Promise<void>;
-  updateClipPosition: (trackId: string, clipId: string, newStartTime: number) => void;
+  updateClipPosition: (trackId: string, clipId: string, newStartTime: number) => Promise<void>;
+  saveTimeline: (projectId: string) => Promise<void>; // ← Nouvelle action
 }
+
+// Identifiant de la dernière requête en cours pour éviter les race conditions
+let loadRequestId = 0;
 
 export const useTimelineStore = create<TimelineState>((set, get) => ({
   timeline: { tracks: [] },
   currentTime: 0,
   duration: 0,
   isLoading: false,
+  error: null,
 
-  // Mise à jour rapide pour la boucle de rendu
   setCurrentTime: (time) => set({ currentTime: time }),
 
   setTimeline: (timeline) => {
-    // Calcul de la durée totale basée sur la fin du dernier clip
-    let maxDuration = 0;
-    timeline.tracks.forEach(track => {
-      track.clips.forEach(clip => {
-        maxDuration = Math.max(maxDuration, clip.startTime + clip.duration);
-      });
-    });
-    set({ timeline, duration: maxDuration });
+    // Calcul avec reduce — pas de mutation de variable externe
+    const duration = timeline.tracks
+      .flatMap(track => track.clips)
+      .reduce((max, clip) => Math.max(max, clip.startTime + clip.duration), 0);
+
+    set({ timeline, duration });
   },
 
   loadProjectTimeline: async (projectId) => {
-    set({ isLoading: true });
+    // Chaque appel reçoit un ID unique — seul le dernier est traité
+    const requestId = ++loadRequestId;
+
+    set({ isLoading: true, error: null });
     try {
       const { data, error } = await supabase
         .from('projects')
@@ -44,33 +49,61 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
         .eq('id', projectId)
         .single();
 
-      if (!error && data?.timeline_data) {
-        get().setTimeline(data.timeline_data as ProjectTimeline);
-      } else {
-        get().setTimeline({ tracks: [] });
-      }
+      // Si une requête plus récente a déjà été lancée, on abandonne celle-ci
+      if (requestId !== loadRequestId) return;
+
+      if (error) throw error;
+
+      get().setTimeline(
+        data?.timeline_data ? (data.timeline_data as ProjectTimeline) : { tracks: [] }
+      );
     } catch (err) {
+      if (requestId !== loadRequestId) return;
+      const message = err instanceof Error ? err.message : 'Erreur inconnue';
       console.error('Erreur Store Timeline:', err);
+      set({ error: message });
     } finally {
-      set({ isLoading: false });
+      // On ne remet isLoading à false que si c'est encore notre requête
+      if (requestId === loadRequestId) set({ isLoading: false });
     }
   },
 
-  updateClipPosition: (trackId, clipId, newStartTime) => {
+  updateClipPosition: async (trackId, clipId, newStartTime) => {
+    // Validation de l'entrée
+    if (!Number.isFinite(newStartTime) || newStartTime < 0) {
+      console.warn(`updateClipPosition: newStartTime invalide (${newStartTime})`);
+      return;
+    }
+
     const { timeline } = get();
     const newTracks = timeline.tracks.map(track => {
       if (track.id !== trackId) return track;
       return {
         ...track,
-        clips: track.clips.map(clip => 
+        clips: track.clips.map(clip =>
           clip.id === clipId ? { ...clip, startTime: newStartTime } : clip
-        )
+        ),
       };
     });
-    
-    const newTimeline = { tracks: newTracks };
-    get().setTimeline(newTimeline);
 
-    // Note: Sauvegarde automatique vers Supabase possible ici
-  }
+    get().setTimeline({ tracks: newTracks });
+  },
+
+  // Sauvegarde découplée — à appeler explicitement (ex: bouton Sauvegarder, onBlur, etc.)
+  saveTimeline: async (projectId) => {
+    const { timeline } = get();
+    set({ error: null });
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({ timeline_data: timeline })
+        .eq('id', projectId);
+
+      if (error) throw error;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur de sauvegarde';
+      console.error('Erreur saveTimeline:', err);
+      set({ error: message });
+    }
+  },
 }));

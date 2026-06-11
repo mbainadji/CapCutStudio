@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { VideoEffectRenderer, getInterpolatedValue } from '../../types/webglEffects';
 import { ProjectTimeline, TimelineClip } from '../../types/timeline';
-import { useTimelineStore } from '../../store/useTimelineStore';
+import { useTimelineStore, TimelineState } from './useTimelineStore';
 
 interface VideoPreviewProps {
   videoUri: string;
@@ -22,9 +22,10 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   const canvasRef = useRef<any>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const rendererRef = useRef<VideoEffectRenderer | null>(null);
-  const requestRef = useRef<number>();
+  const glRef = useRef<WebGLRenderingContext | null>(null);
+  const requestRef = useRef<number | null>(null);
   const textureRef = useRef<WebGLTexture | null>(null);
-  const setStoreTime = useTimelineStore(state => state.setCurrentTime);
+  const setStoreTime = useTimelineStore((state: TimelineState) => state.setCurrentTime);
 
   // 1. Initialisation de la source vidéo (cachée)
   useEffect(() => {
@@ -54,15 +55,22 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   }, [isPlaying]);
 
   // 3. Boucle de Rendu (60 FPS)
-  const renderLoop = () => {
+  const renderLoop = (time: number) => {
     const video = videoRef.current;
-    const gl = canvasRef.current?.getContext('webgl') as WebGLRenderingContext | null;
     
+    // Optimization: Cache the WebGL context instead of requesting it every frame
+    if (!glRef.current && canvasRef.current) {
+      glRef.current = canvasRef.current.getContext('webgl', { 
+        preserveDrawingBuffer: true 
+      }) as WebGLRenderingContext | null;
+    }
+    const gl = glRef.current;
+
     if (video && gl && !video.paused && !video.ended) {
       // Synchronisation du temps : On met à jour la timeline via la vidéo
       setStoreTime(video.currentTime);
 
-      if (!rendererRef.current && gl) {
+      if (gl && !rendererRef.current) {
         rendererRef.current = new VideoEffectRenderer(gl);
       }
 
@@ -110,7 +118,9 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
 
         // Rendu final via les Shaders
-        rendererRef.current.render(params, textureRef.current!);
+        if (rendererRef.current && textureRef.current) {
+          rendererRef.current.render(params, textureRef.current);
+        }
       }
     }
     requestRef.current = requestAnimationFrame(renderLoop);
